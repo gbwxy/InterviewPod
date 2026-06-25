@@ -1,0 +1,29 @@
+.catpaw/
+.idea/
+.vscode/
+.codebuddy/
+.CLAUDE/
+openspec/
+
+# Ignore Gradle project-specific cache directory
+.gradle
+# Ignore Gradle build output directory
+build
+app/build/*
+app/bin/*
+# Environment variables
+.env
+
+app/src/main/resources/application-dev.yml
+/docs
+SETUP_API_KEYS.md
+
+# AI Assistant documentation
+CLAUDE.md
+GEMINI.md
+AGENT.md
+
+# Playwright MCP
+.playwright-mcp/
+/.agents
+skills-lock.json

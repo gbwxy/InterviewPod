@@ -1,0 +1,264 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+@plugin "@tailwindcss/typography";
+
+/* 启用深色模式 - 使用 class 策略 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 自定义主题 - 黑白极简设计系统 */
+@theme {
+  --color-primary-50: #fafafa;
+  --color-primary-100: #f4f4f5;
+  --color-primary-200: #e4e4e7;
+  --color-primary-300: #d4d4d8;
+  --color-primary-400: #a1a1aa;
+  --color-primary-500: #71717a;
+  --color-primary-600: #52525b;
+  --color-primary-700: #3f3f46;
+  --color-primary-800: #27272a;
+  --color-primary-900: #18181b;
+  --color-primary-950: #09090b;
+
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+}
+
+/* 自定义基础样式 */
+@layer base {
+  html, body, #root {
+    @apply h-full m-0 p-0;
+  }
+
+  body {
+    @apply antialiased;
+    font-family: var(--font-sans);
+    @apply bg-white text-black;
+  }
+
+  .dark body {
+    @apply bg-black text-white;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-semibold tracking-tight;
+    @apply text-black dark:text-white;
+  }
+}
+
+/* 通用组件样式 */
+@layer components {
+    /* 通用卡片背景 */
+    .theme-card {
+        @apply bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800;
+        @apply shadow-sm;
+    }
+
+    /* 通用输入框 */
+    .theme-input {
+        @apply bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700;
+        @apply text-black dark:text-white placeholder:text-zinc-500;
+        @apply focus:ring-2 focus:ring-zinc-400/50 dark:focus:ring-zinc-500/50 focus:border-zinc-400 dark:focus:border-zinc-500;
+        @apply transition-all duration-200;
+    }
+
+    /* 通用主文字 */
+    .theme-text {
+        @apply text-black dark:text-white;
+    }
+
+    /* 通用次要文字 */
+    .theme-text-muted {
+        @apply text-zinc-600 dark:text-zinc-400;
+    }
+
+    /* 通用边框 */
+    .theme-border {
+        @apply border-zinc-200 dark:border-zinc-800;
+    }
+
+    /* 通用分隔线 */
+    .theme-divider {
+        @apply border-zinc-200 dark:border-zinc-800;
+    }
+
+    /* 主要操作按钮 */
+    .btn-primary {
+        @apply bg-black text-white dark:bg-white dark:text-black font-medium;
+        @apply hover:bg-zinc-800 dark:hover:bg-zinc-200;
+        @apply active:scale-[0.98];
+        @apply shadow-sm;
+        @apply transition-all duration-200;
+    }
+
+    /* 次要操作按钮 */
+    .btn-secondary {
+        @apply bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300;
+        @apply hover:bg-zinc-200 dark:hover:bg-zinc-700;
+        @apply active:scale-[0.98];
+        @apply border border-zinc-200 dark:border-zinc-700;
+        @apply transition-all duration-200;
+    }
+
+    /* 状态徽章 */
+    .status-badge {
+        @apply px-2.5 py-1 rounded-full text-xs font-medium;
+        @apply bg-zinc-100 text-zinc-700 border border-zinc-200;
+        @apply dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700;
+    }
+
+    /* 危险按钮 */
+    .btn-danger {
+        @apply bg-red-600 text-white hover:bg-red-700;
+        @apply active:scale-[0.98];
+        @apply transition-all duration-200;
+    }
+
+    /* 导航链接 */
+    .nav-link {
+        @apply text-zinc-600 dark:text-zinc-400;
+        @apply hover:bg-zinc-100 dark:hover:bg-zinc-800/70 hover:text-black dark:hover:text-zinc-200;
+        @apply rounded-lg transition-all duration-150;
+    }
+
+    .nav-link-active {
+        @apply bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white;
+    }
+}
+
+/* 自定义滚动条 */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-zinc-100 dark:bg-zinc-900 rounded;
+  }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-zinc-300 dark:bg-zinc-700 rounded hover:bg-zinc-400 dark:hover:bg-zinc-600;
+  }
+}
+
+/* React Big Calendar 自定义样式 */
+@layer components {
+  .rbc-calendar {
+    @apply font-sans;
+  }
+
+  .rbc-toolbar {
+    @apply mb-6;
+  }
+
+  .rbc-toolbar button {
+    @apply px-4 py-2 rounded-lg font-medium text-sm;
+    @apply bg-zinc-100 text-zinc-700 border border-zinc-200;
+    @apply hover:bg-zinc-200;
+    @apply transition-all duration-200;
+  }
+
+  .dark .rbc-toolbar button {
+    @apply bg-zinc-800 text-zinc-300 border-zinc-700;
+    @apply hover:bg-zinc-700;
+  }
+
+  .rbc-toolbar button.rbc-active {
+    @apply bg-black text-white border-black;
+  }
+
+  .dark .rbc-toolbar button.rbc-active {
+    @apply bg-white text-black border-white;
+  }
+
+  .rbc-toolbar-label {
+    @apply font-display font-bold text-lg text-black dark:text-white;
+  }
+
+  .rbc-header {
+    @apply py-3 font-display font-semibold text-sm uppercase tracking-wide;
+    @apply bg-zinc-100 text-zinc-600 border-b border-zinc-200;
+    @apply dark:bg-zinc-900 dark:text-zinc-500 dark:border-b dark:border-zinc-800;
+  }
+
+  .rbc-month-view, .rbc-time-view, .rbc-agenda-view {
+    @apply rounded-xl overflow-hidden;
+    @apply border border-zinc-200 dark:border-zinc-800;
+  }
+
+  .rbc-day-bg, .rbc-time-header-content, .rbc-time-gutter {
+    @apply bg-white dark:bg-black;
+  }
+
+  .rbc-off-range-bg {
+    @apply bg-zinc-50 dark:bg-zinc-900/50;
+  }
+
+  .rbc-today {
+    @apply bg-zinc-100 dark:bg-zinc-800/60;
+  }
+
+  .rbc-time-slot {
+    @apply border-zinc-100 dark:border-zinc-900;
+  }
+
+  .rbc-event {
+    @apply rounded-lg;
+    @apply transition-all duration-200;
+    @apply bg-zinc-700 border-zinc-600;
+    @apply hover:bg-zinc-600;
+  }
+
+  .rbc-event-content {
+    @apply font-medium text-white;
+  }
+
+  .rbc-month-row {
+    @apply border-zinc-200 dark:border-zinc-800;
+  }
+
+  .rbc-day-slot .rbc-time-slot {
+    @apply border-zinc-100 dark:border-zinc-900;
+  }
+
+  .rbc-time-view-resources .rbc-time-gutter {
+    @apply bg-zinc-100 dark:bg-zinc-900;
+  }
+
+  .rbc-time-header-content {
+    @apply border-zinc-200 dark:border-zinc-800;
+  }
+
+  .rbc-agenda-view table.rbc-agenda-table {
+    @apply border-zinc-200 dark:border-zinc-800;
+    @apply bg-white dark:bg-black;
+  }
+
+  .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+    @apply border-zinc-100 dark:border-zinc-900;
+    @apply py-3 px-4;
+  }
+
+  .rbc-agenda-view table.rbc-agenda-table .rbc-agenda-time-cell {
+    @apply font-display font-semibold text-zinc-600 dark:text-zinc-400;
+  }
+
+  .rbc-show-more {
+    @apply font-semibold text-zinc-600 dark:text-zinc-400;
+    @apply hover:text-black dark:hover:text-zinc-300;
+    @apply transition-colors duration-200;
+  }
+
+  /* 日历通用文字 */
+  .rbc-date-cell {
+    @apply text-zinc-600 dark:text-zinc-400;
+  }
+
+  .rbc-off-range .rbc-date-cell {
+    @apply text-zinc-400 dark:text-zinc-700;
+  }
+}
