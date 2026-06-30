@@ -1,5 +1,6 @@
 package interview.modules.interviewschedule;
 
+import interview.common.config.SecurityContextHelper;
 import interview.common.result.Result;
 import interview.modules.interviewschedule.model.CreateInterviewRequest;
 import interview.modules.interviewschedule.model.InterviewScheduleDTO;
@@ -38,6 +39,7 @@ public class InterviewScheduleController {
 
     private final InterviewScheduleService scheduleService;
     private final InterviewParseService parseService;
+    private final SecurityContextHelper securityContextHelper;
 
     /**
      * 解析面试邀约文本
@@ -60,25 +62,27 @@ public class InterviewScheduleController {
      */
     @PostMapping
     public Result<InterviewScheduleDTO> create(@Valid @RequestBody CreateInterviewRequest request) {
-        log.info("创建面试记录: {} - {}", request.getCompanyName(), request.getPosition());
-        InterviewScheduleDTO dto = scheduleService.create(request);
+        Long userId = securityContextHelper.getCurrentUserId();
+        log.info("创建面试记录: {} - {}, userId={}", request.getCompanyName(), request.getPosition(), userId);
+        InterviewScheduleDTO dto = scheduleService.create(request, userId);
         return Result.success(dto);
     }
 
     /**
-     * 根据ID获取面试记录
+     * 根据ID获取面试记录（带归属校验）
      *
      * @param id 面试记录ID
      * @return 面试记录详情
      */
     @GetMapping("/{id}")
     public Result<InterviewScheduleDTO> getById(@PathVariable Long id) {
-        InterviewScheduleDTO dto = scheduleService.getById(id);
+        Long userId = securityContextHelper.getCurrentUserId();
+        InterviewScheduleDTO dto = scheduleService.getById(id, userId);
         return Result.success(dto);
     }
 
     /**
-     * 获取面试记录列表
+     * 获取当前用户的面试记录列表
      *
      * @param status 状态过滤（可选）
      * @param start 开始时间（可选）
@@ -91,12 +95,13 @@ public class InterviewScheduleController {
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end
     ) {
-        List<InterviewScheduleDTO> list = scheduleService.getAll(status, start, end);
+        Long userId = securityContextHelper.getCurrentUserId();
+        List<InterviewScheduleDTO> list = scheduleService.getAll(status, start, end, userId);
         return Result.success(list);
     }
 
     /**
-     * 更新面试记录
+     * 更新面试记录（带归属校验）
      *
      * @param id 面试记录ID
      * @param request 更新请求
@@ -107,26 +112,28 @@ public class InterviewScheduleController {
         @PathVariable Long id,
         @Valid @RequestBody CreateInterviewRequest request
     ) {
-        log.info("更新面试记录: ID={}", id);
-        InterviewScheduleDTO dto = scheduleService.update(id, request);
+        Long userId = securityContextHelper.getCurrentUserId();
+        log.info("更新面试记录: ID={}, userId={}", id, userId);
+        InterviewScheduleDTO dto = scheduleService.update(id, request, userId);
         return Result.success(dto);
     }
 
     /**
-     * 删除面试记录
+     * 删除面试记录（带归属校验）
      *
      * @param id 面试记录ID
      * @return 成功响应
      */
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
-        log.info("删除面试记录: ID={}", id);
-        scheduleService.delete(id);
+        Long userId = securityContextHelper.getCurrentUserId();
+        log.info("删除面试记录: ID={}, userId={}", id, userId);
+        scheduleService.delete(id, userId);
         return Result.success(null);
     }
 
     /**
-     * 更新面试状态
+     * 更新面试状态（带归属校验）
      *
      * @param id 面试记录ID
      * @param status 新状态
@@ -137,8 +144,9 @@ public class InterviewScheduleController {
         @PathVariable Long id,
         @RequestParam InterviewStatus status
     ) {
-        log.info("更新面试状态: ID={}, status={}", id, status);
-        InterviewScheduleDTO dto = scheduleService.updateStatus(id, status);
+        Long userId = securityContextHelper.getCurrentUserId();
+        log.info("更新面试状态: ID={}, status={}, userId={}", id, status, userId);
+        InterviewScheduleDTO dto = scheduleService.updateStatus(id, status, userId);
         return Result.success(dto);
     }
 }

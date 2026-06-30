@@ -41,7 +41,7 @@ public class InterviewPersistenceService {
     private final ObjectMapper objectMapper;
     
     /**
-     * 保存新的面试会话（支持可选简历）
+     * 保存新的面试会话（支持可选简历），旧版兼容
      */
     @Transactional(rollbackFor = Exception.class)
     public InterviewSessionEntity saveSession(String sessionId, Long resumeId,
@@ -50,6 +50,20 @@ public class InterviewPersistenceService {
                                               String llmProvider,
                                               String skillId,
                                               String difficulty) {
+        return saveSession(sessionId, resumeId, totalQuestions, questions, llmProvider, skillId, difficulty, null);
+    }
+
+    /**
+     * 保存新的面试会话（含用户绑定）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public InterviewSessionEntity saveSession(String sessionId, Long resumeId,
+                                              int totalQuestions,
+                                              List<InterviewQuestionDTO> questions,
+                                              String llmProvider,
+                                              String skillId,
+                                              String difficulty,
+                                              Long userId) {
         try {
             InterviewSessionEntity session = new InterviewSessionEntity();
             session.setSessionId(sessionId);
@@ -60,6 +74,7 @@ public class InterviewPersistenceService {
             session.setLlmProvider(llmProvider != null ? llmProvider : "default");
             session.setSkillId(skillId != null ? skillId : InterviewDefaults.SKILL_ID);
             session.setDifficulty(difficulty != null ? difficulty : InterviewDefaults.DIFFICULTY);
+            session.setUserId(userId);
 
             // 简历可选：有 resumeId 则关联简历
             if (resumeId != null) {
@@ -68,7 +83,7 @@ public class InterviewPersistenceService {
             }
 
             InterviewSessionEntity saved = sessionRepository.save(session);
-            log.info("面试会话已保存: sessionId={}, skillId={}, resumeId={}", sessionId, skillId, resumeId);
+            log.info("面试会话已保存: sessionId={}, skillId={}, resumeId={}, userId={}", sessionId, skillId, resumeId, userId);
 
             return saved;
         } catch (JacksonException e) {
@@ -278,6 +293,13 @@ public class InterviewPersistenceService {
         }
     }
     
+    /**
+     * 查找属于指定用户的所有面试会话（按创建时间倒序）
+     */
+    public List<InterviewSessionEntity> findByUserId(Long userId) {
+        return sessionRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
     /**
      * 删除单个面试会话
      * 由于InterviewSessionEntity设置了cascade = CascadeType.ALL, orphanRemoval = true

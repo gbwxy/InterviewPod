@@ -1,4 +1,4 @@
-import { API_BASE_URL, getErrorMessage, getResultError, parseResultPayload } from './request';
+import { API_BASE_URL, getErrorMessage, getResultError, parseResultPayload, tokenStorage } from './request';
 
 type SseParseMode = 'line' | 'event';
 
@@ -270,7 +270,18 @@ async function readStream(response: Response, options: StreamSseOptions): Promis
 
 export async function streamSse(options: StreamSseOptions): Promise<void> {
   try {
-    const response = await fetch(toApiUrl(options.url), options.init);
+    const token = tokenStorage.getAccessToken();
+    const headers: Record<string, string> = {
+      ...(options.init.headers as Record<string, string> || {}),
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(toApiUrl(options.url), {
+      ...options.init,
+      headers,
+    });
     await assertStreamResponse(response);
     await readStream(response, options);
     options.onComplete();

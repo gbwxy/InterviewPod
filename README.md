@@ -220,6 +220,9 @@ docker compose up -d --build
 # 查看后端日志
 docker compose logs -f app
 
+# 彻底清理旧缓存后重新构建
+docker compose build --no-cache app
+
 # 拉取新代码后重新构建
 docker compose up -d --build
 
@@ -228,6 +231,56 @@ docker compose down
 
 # 停止服务并清除全部数据（慎用）
 docker compose down -v
+```
+
+---
+
+## 开发环境启动
+
+适合本地开发，仅启动基础设施服务（PostgreSQL、Redis、MinIO），后端和前端在本地运行。
+
+```bash
+# 1. 复制环境变量模板并填入本地配置
+cp .env.example .env.dev
+# 必填：AI_BAILIAN_API_KEY、APP_AI_CONFIG_ENCRYPTION_KEY、JWT_SECRET
+
+# 2. 启动基础设施（PostgreSQL + Redis + MinIO）
+docker compose -f docker-compose-dev.yml --env-file .env.dev up -d
+
+# 3. 启动后端（Spring Boot）
+./gradlew :app:bootRun
+
+# 4. 启动前端（Vite Dev Server）
+cd frontend
+corepack enable
+pnpm install
+pnpm dev
+```
+
+> **提示**：开发环境默认开启短信 Mock 模式（`SMS_MOCK=true`），登录验证码将打印在控制台日志中，无需真实短信服务。
+
+基础设施服务地址：
+
+| 服务 | 地址 | 账号 | 密码 |
+|------|------|------|------|
+| PostgreSQL | `localhost:5432` | `postgres` | `password` |
+| Redis | `localhost:6379` | — | — |
+| MinIO | `localhost:9001` | `minioadmin` | `minioadmin` |
+
+常用运维命令：
+
+```bash
+# 查看服务状态
+docker compose -f docker-compose-dev.yml ps
+
+# 查看日志
+docker compose -f docker-compose-dev.yml logs -f
+
+# 停止服务（数据保留）
+docker compose -f docker-compose-dev.yml down
+
+# 停止服务并清除数据（慎用）
+docker compose -f docker-compose-dev.yml down -v
 ```
 
 ---
@@ -263,7 +316,7 @@ InterviewPod/
 │       └── types/                    # 类型定义
 │
 ├── docker-compose.yml                # 完整部署（前后端 + 全部依赖）
-├── docker-compose.dev.yml            # 本地开发依赖（PostgreSQL + Redis + RustFS）
+├── docker-compose-dev.yml            # 本地开发依赖（PostgreSQL + Redis + MinIO）
 ├── .env.example                      # 环境变量模板
 └── docs/                             # 架构设计文档
 ```

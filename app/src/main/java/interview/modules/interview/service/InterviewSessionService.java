@@ -52,7 +52,17 @@ public class InterviewSessionService {
      * 注意：如果已有未完成的会话，不会创建新的，而是返回现有会话
      * 前端应该先调用 findUnfinishedSession 检查，或者使用 forceCreate 参数强制创建
      */
+    /**
+     * 创建面试会话（兼容旧接口）
+     */
     public InterviewSessionDTO createSession(CreateInterviewRequest request) {
+        return createSession(request, null);
+    }
+
+    /**
+     * 创建面试会话（含用户绑定）
+     */
+    public InterviewSessionDTO createSession(CreateInterviewRequest request, Long userId) {
         // 如果指定了resumeId且未强制创建，检查是否有未完成的会话
         if (request.resumeId() != null && !Boolean.TRUE.equals(request.forceCreate())) {
             Optional<InterviewSessionDTO> unfinishedOpt = findUnfinishedSession(request.resumeId());
@@ -67,8 +77,8 @@ public class InterviewSessionService {
         String skillId = request.skillId() != null ? request.skillId() : InterviewDefaults.SKILL_ID;
         String difficulty = request.difficulty() != null ? request.difficulty() : InterviewDefaults.DIFFICULTY;
 
-        log.info("创建新面试会话: {}, skill: {}, difficulty: {}, questionCount: {}, resumeId: {}",
-            sessionId, skillId, difficulty, request.questionCount(), request.resumeId());
+        log.info("创建新面试会话: {}, skill: {}, difficulty: {}, questionCount: {}, resumeId: {}, userId: {}",
+            sessionId, skillId, difficulty, request.questionCount(), request.resumeId(), userId);
 
         // 获取历史问题（通用模式按 skillId 查询，有简历时按 resumeId + skillId 精确匹配）
         List<HistoricalQuestion> historicalQuestions =
@@ -96,10 +106,10 @@ public class InterviewSessionService {
             SessionStatus.CREATED
         );
 
-        // 保存到数据库
+        // 保存到数据库（含用户绑定）
         try {
             persistenceService.saveSession(sessionId, request.resumeId(),
-                questions.size(), questions, request.llmProvider(), skillId, difficulty);
+                questions.size(), questions, request.llmProvider(), skillId, difficulty, userId);
         } catch (Exception e) {
             log.warn("保存面试会话到数据库失败: {}", e.getMessage());
         }

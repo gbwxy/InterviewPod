@@ -2,12 +2,15 @@ package interview.modules.knowledgebase.repository;
 
 import interview.modules.knowledgebase.model.KnowledgeBaseEntity;
 import interview.modules.knowledgebase.model.VectorStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -103,5 +106,44 @@ public interface KnowledgeBaseRepository extends JpaRepository<KnowledgeBaseEnti
      * 按向量化状态查找知识库（按上传时间倒序）
      */
     List<KnowledgeBaseEntity> findByVectorStatusOrderByUploadedAtDesc(VectorStatus vectorStatus);
+
+    // ========== 用户隔离查询 ==========
+
+    /**
+     * 查找属于指定用户的所有知识库（按上传时间倒序）
+     */
+    List<KnowledgeBaseEntity> findByUserIdOrderByUploadedAtDesc(Long userId);
+
+    /**
+     * 根据 ID 和用户 ID 查找（用于归属校验）
+     */
+    Optional<KnowledgeBaseEntity> findByIdAndUserId(Long id, Long userId);
+
+    /**
+     * 根据文件哈希和用户 ID 查找（用于用户级去重）
+     */
+    Optional<KnowledgeBaseEntity> findByFileHashAndUserId(String fileHash, Long userId);
+
+    /**
+     * 统计用户的知识库文件数量
+     */
+    long countByUserId(Long userId);
+
+    // ========== 管理员全量查询 ==========
+
+    /**
+     * 按用户 ID 分页查询（管理员接口）
+     */
+    Page<KnowledgeBaseEntity> findByUserId(Long userId, Pageable pageable);
+
+    /**
+     * 按上传时间范围分页查询（管理员接口）
+     */
+    Page<KnowledgeBaseEntity> findByUploadedAtBetween(LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    /**
+     * 按用户 ID + 时间范围分页查询（管理员接口）
+     */
+    Page<KnowledgeBaseEntity> findByUserIdAndUploadedAtBetween(Long userId, LocalDateTime start, LocalDateTime end, Pageable pageable);
 }
 

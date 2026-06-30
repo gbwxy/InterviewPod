@@ -34,28 +34,43 @@ public class KnowledgeBaseListService {
     private final FileStorageService fileStorageService;
 
     /**
-     * 获取知识库列表（支持状态过滤和排序）
-     * 
+     * 获取知识库列表（支持状态过滤和排序）- 管理员全量
+     *
      * @param vectorStatus 向量化状态，null 表示不过滤
-     * @param sortBy 排序字段，null 或 "time" 表示按时间排序
+     * @param sortBy       排序字段，null 或 "time" 表示按时间排序
      * @return 知识库列表
      */
     public List<KnowledgeBaseListItemDTO> listKnowledgeBases(VectorStatus vectorStatus, String sortBy) {
         List<KnowledgeBaseEntity> entities;
-        
-        // 如果指定了状态，按状态过滤
         if (vectorStatus != null) {
             entities = knowledgeBaseRepository.findByVectorStatusOrderByUploadedAtDesc(vectorStatus);
         } else {
-            // 否则获取所有知识库
             entities = knowledgeBaseRepository.findAllByOrderByUploadedAtDesc();
         }
-        
-        // 如果指定了排序字段，在内存中排序
         if (sortBy != null && !sortBy.isBlank() && !sortBy.equalsIgnoreCase("time")) {
             entities = sortEntities(entities, sortBy);
         }
-        
+        return knowledgeBaseMapper.toListItemDTOList(entities);
+    }
+
+    /**
+     * 获取指定用户的知识库列表（用户隔离）
+     *
+     * @param userId       用户 ID
+     * @param vectorStatus 向量化状态，null 表示不过滤
+     * @param sortBy       排序字段
+     * @return 知识库列表
+     */
+    public List<KnowledgeBaseListItemDTO> listKnowledgeBases(Long userId, VectorStatus vectorStatus, String sortBy) {
+        List<KnowledgeBaseEntity> entities = knowledgeBaseRepository.findByUserIdOrderByUploadedAtDesc(userId);
+        if (vectorStatus != null) {
+            entities = entities.stream()
+                .filter(e -> vectorStatus.equals(e.getVectorStatus()))
+                .toList();
+        }
+        if (sortBy != null && !sortBy.isBlank() && !sortBy.equalsIgnoreCase("time")) {
+            entities = sortEntities(entities, sortBy);
+        }
         return knowledgeBaseMapper.toListItemDTOList(entities);
     }
 
@@ -63,7 +78,7 @@ public class KnowledgeBaseListService {
      * 获取所有知识库列表（保持向后兼容）
      */
     public List<KnowledgeBaseListItemDTO> listKnowledgeBases() {
-        return listKnowledgeBases(null, null);
+        return listKnowledgeBases((VectorStatus) null, null);
     }
 
     /**
@@ -74,7 +89,15 @@ public class KnowledgeBaseListService {
     }
 
     /**
-     * 根据ID获取知识库详情
+     * 根据 ID 和 userId 获取知识库详情（用户隔离）
+     */
+    public Optional<KnowledgeBaseListItemDTO> getKnowledgeBase(Long id, Long userId) {
+        return knowledgeBaseRepository.findByIdAndUserId(id, userId)
+            .map(knowledgeBaseMapper::toListItemDTO);
+    }
+
+    /**
+     * 根据ID获取知识库详情（管理员用）
      */
     public Optional<KnowledgeBaseListItemDTO> getKnowledgeBase(Long id) {
         return knowledgeBaseRepository.findById(id)

@@ -42,10 +42,11 @@ public class ResumeUploadService {
     /**
      * 上传并分析简历（异步）
      *
-     * @param file 简历文件
+     * @param file   简历文件
+     * @param userId 当前用户 ID（自动绑定到简历记录）
      * @return 上传结果（分析将异步进行）
      */
-    public Map<String, Object> uploadAndAnalyze(org.springframework.web.multipart.MultipartFile file) {
+    public Map<String, Object> uploadAndAnalyze(org.springframework.web.multipart.MultipartFile file, Long userId) {
         long startTime = System.currentTimeMillis();
 
         // 1. 验证文件
@@ -84,8 +85,8 @@ public class ResumeUploadService {
         log.info("简历已存储到RustFS: {} - 存储耗时: {}ms",
             fileKey, System.currentTimeMillis() - storageStart);
 
-        // 6. 保存简历到数据库（状态为 PENDING）
-        ResumeEntity savedResume = persistenceService.saveResume(file, resumeText, fileKey, fileUrl);
+        // 6. 保存简历到数据库（状态为 PENDING，绑定用户）
+        ResumeEntity savedResume = persistenceService.saveResume(file, resumeText, fileKey, fileUrl, userId);
 
         // 7. 发送分析任务到 Redis Stream（异步处理）
         analyzeStreamProducer.sendAnalyzeTask(savedResume.getId(), resumeText);
@@ -169,11 +170,16 @@ public class ResumeUploadService {
      * 从数据库获取简历文本并发送分析任务
      *
      * @param resumeId 简历ID
+     * @param userId   当前用户 ID（归属校验）
      */
-    public void reanalyze(Long resumeId) {
-        ResumeReanalyzeSource source = loadReanalyzeSource(resumeId);
+    public void reanalyze(Long resumeId, Long userId) {
+        // 归属校验：不属于当前用户则 404
+        ResumeEntity check = resumeRepository.findByIdAndUserId(resumeId, userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.RESUME_NOT_FOUND));
+        ResumeReanalyzeSource source = new ResumeReanalyzeSource(
+            check.getOriginalFilename(), check.getStorageKey(), check.getResumeText());
 
-        log.info("开始重新分析简历: resumeId={}, filename={}", resumeId, source.originalFilename());
+        log.info("开始重新分析简历: resumeId={}, filename={}, userId={}", resumeId, source.originalFilename(), userId);
 
         String resumeText = source.resumeText();
         boolean shouldCacheResumeText = !hasText(resumeText);

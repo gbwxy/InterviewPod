@@ -30,10 +30,16 @@ public class KnowledgeBaseDeleteService {
     private final TransactionalExecutor transactionalExecutor;
     
     /**
-     * 删除知识库
+     * 删除知识库（带用户归属校验）
      * 包括：RAG会话关联、向量数据、RustFS文件、数据库记录
+     *
+     * @param id     知识库 ID
+     * @param userId 当前用户 ID（归属校验，不属于则 404）
      */
-    public void deleteKnowledgeBase(Long id) {
+    public void deleteKnowledgeBase(Long id, Long userId) {
+        // 归属校验
+        knowledgeBaseRepository.findByIdAndUserId(id, userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.KNOWLEDGE_BASE_NOT_FOUND, "知识库不存在"));
         String storageKey = transactionalExecutor.call(() -> deleteKnowledgeBaseRecords(id));
 
         vectorService.deleteByKnowledgeBaseId(id);

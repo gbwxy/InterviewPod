@@ -23,7 +23,7 @@ public class VoiceInterviewSessionEntity {
     private Long id;
 
     @Column(name = "user_id")
-    private String userId;
+    private Long userId;
 
     @Column(name = "role_type", nullable = false)
     private String roleType;

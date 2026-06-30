@@ -3,7 +3,10 @@
 .vscode/
 .codebuddy/
 .CLAUDE/
+.agents/
 openspec/
+.playwright-mcp/
+/docs
 
 # Ignore Gradle project-specific cache directory
 .gradle
@@ -11,19 +14,15 @@ openspec/
 build
 app/build/*
 app/bin/*
+
 # Environment variables
 .env
-
-app/src/main/resources/application-dev.yml
-/docs
-SETUP_API_KEYS.md
+.env-dev
+.env.dev
+# Note: .env.example and docker-compose-dev.yml should be committed to Git
 
 # AI Assistant documentation
 CLAUDE.md
 GEMINI.md
 AGENT.md
-
-# Playwright MCP
-.playwright-mcp/
-/.agents
 skills-lock.json

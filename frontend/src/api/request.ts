@@ -1,9 +1,38 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 
 declare module 'axios' {
   interface AxiosRequestConfig {
     skipResultTransform?: boolean;
+    _retry?: boolean;
   }
+}
+
+// ===== Token 管理 =====
+const ACCESS_TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
+
+export const tokenStorage = {
+  getAccessToken: () => sessionStorage.getItem(ACCESS_TOKEN_KEY),
+  setAccessToken: (token: string) => sessionStorage.setItem(ACCESS_TOKEN_KEY, token),
+  getRefreshToken: () => localStorage.getItem(REFRESH_TOKEN_KEY),
+  setRefreshToken: (token: string) => localStorage.setItem(REFRESH_TOKEN_KEY, token),
+  clear: () => {
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  },
+};
+
+// 刷新 Token 的锁，避免并发刷新
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function subscribeTokenRefresh(callback: (token: string) => void) {
+  refreshSubscribers.push(callback);
+}
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach(cb => cb(token));
+  refreshSubscribers = [];
 }
 
 /**
@@ -24,6 +53,62 @@ const instance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 60000,
 });
+
+/** Token 刷新失败时跳转登录（延迟导入避免循环依赖） */
+function redirectToLogin() {
+  tokenStorage.clear();
+  // 使用 location.href 跳转，避免依赖 Router
+  if (!window.location.pathname.startsWith('/login')) {
+    window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+  }
+}
+
+/** 处理 Token 刷新逻辑 */
+async function handleTokenRefresh(originalConfig: AxiosRequestConfig) {
+  const refreshToken = tokenStorage.getRefreshToken();
+  if (!refreshToken) {
+    redirectToLogin();
+    return Promise.reject(new Error('请重新登录'));
+  }
+
+  if (isRefreshing) {
+    // 等待刷新完成后重试
+    return new Promise<string>((resolve) => {
+      subscribeTokenRefresh((token) => resolve(token));
+    }).then((token) => {
+      originalConfig._retry = true;
+      if (originalConfig.headers) {
+        originalConfig.headers['Authorization'] = `Bearer ${token}`;
+      }
+      return instance(originalConfig);
+    });
+  }
+
+  isRefreshing = true;
+  try {
+    const res = await instance.post<{ data: { accessToken: string } }>(
+      '/api/auth/refresh',
+      { refreshToken },
+      { skipResultTransform: true }
+    );
+    const newToken = (res.data as unknown as { data: { accessToken: string } }).data?.accessToken;
+    if (!newToken) throw new Error('Token 刷新失败');
+
+    tokenStorage.setAccessToken(newToken);
+    onRefreshed(newToken);
+
+    originalConfig._retry = true;
+    if (originalConfig.headers) {
+      originalConfig.headers['Authorization'] = `Bearer ${newToken}`;
+    }
+    return instance(originalConfig);
+  } catch {
+    redirectToLogin();
+    return Promise.reject(new Error('登录已过期，请重新登录'));
+  } finally {
+    isRefreshing = false;
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
@@ -104,14 +189,29 @@ async function getErrorFromResponseData(data: unknown): Promise<Error | null> {
 }
 
 /**
+ * 请求拦截器：自动附加 Authorization 头
+ */
+instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const token = tokenStorage.getAccessToken();
+  if (token && config.headers) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+});
+
+/**
  * 响应拦截器
  *
  * 后端约定：所有响应都是 HTTP 200 + Result
  * - code === 200 → 成功，返回 data
  * - code !== 200 → 失败，直接显示 message
+ *
+ * 当 code === 12011（Token无效/过期）时，自动刷新 Token。
  */
+const TOKEN_INVALID_CODE = 12011;
+
 instance.interceptors.response.use(
-  (response) => {
+  async (response) => {
     if (response.config.skipResultTransform) {
       return response;
     }
@@ -125,6 +225,12 @@ instance.interceptors.response.use(
         response.data = result.data;
         return response;
       }
+
+      // Token 无效：尝试刷新
+      if (result.code === TOKEN_INVALID_CODE && !response.config._retry) {
+        return handleTokenRefresh(response.config);
+      }
+
       // 失败：直接抛出 message
       return Promise.reject(new Error(result.message || '请求失败'));
     }

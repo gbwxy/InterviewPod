@@ -18,6 +18,8 @@ repositories {
     maven { url = uri('https://maven.aliyun.com/repository/gradle-plugin/') }
     mavenCentral()
     maven { url = uri('https://repo.spring.io/milestone') }
+    // 支付宝 SDK 需要从阿里云 Maven 仓库获取
+    maven { url = uri('https://maven.aliyun.com/repository/apache-snapshots/') }
 }
 
 dependencies {
@@ -27,6 +29,27 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    // Spring Security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // JWT (JJWT)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // 阿里云短信 SDK
+    implementation 'com.aliyun:dysmsapi20170525:3.0.0'
+
+    // 微信支付 SDK
+    implementation 'com.github.wechatpay-apiv3:wechatpay-java:0.2.14'
+
+    // 支付宝 SDK
+    implementation('com.alipay.sdk:alipay-sdk-java:4.39.218.ALL') {
+        exclude group: 'com.alibaba', module: 'fastjson'
+    }
+
+    // dotenv-java: 本地 bootRun 时加载 .env.dev 文件
+    implementation 'io.github.cdimascio:dotenv-java:3.1.0'
 
     // PostgreSQL
     runtimeOnly 'org.postgresql:postgresql'
@@ -105,7 +128,12 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-// 将仓库根目录 .env 注入 bootRun，便于本地加载 AI_BAILIAN_API_KEY 等变量（Gradle 进程默认不读 .env）
+tasks.named('bootJar') {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// bootRun 配置：本地开发通过 DotenvEnvironmentPostProcessor 加载 .env.dev
+// Docker 生产容器中不传此属性，PostProcessor 静默跳过
 // 同时确保 JVM 使用 UTF-8 编码
 tasks.named('bootRun') {
     // JVM 编码配置（stdout/stderr：JDK 18+，避免控制台 PrintStream 与 Logback UTF-8 不一致）
@@ -113,27 +141,8 @@ tasks.named('bootRun') {
             '-Dfile.encoding=UTF-8',
             '-Dconsole.encoding=UTF-8',
             '-Dstdout.encoding=UTF-8',
-            '-Dstderr.encoding=UTF-8'
+            '-Dstderr.encoding=UTF-8',
+            // 指定 dotenv 文件路径；可通过 -PenvFile=.env 覆盖（例如需要测试生产变量时）
+            "-Ddotenv.file=${project.findProperty('envFile') ?: '.env.dev'}"
     ]
-
-    // 加载 .env 文件
-    def envFile = rootProject.file('.env')
-    if (envFile.exists()) {
-        envFile.eachLine { line ->
-            def trimmed = line.trim()
-            if (trimmed.isEmpty() || trimmed.startsWith('#')) {
-                return
-            }
-            def eq = trimmed.indexOf('=')
-            if (eq <= 0) {
-                return
-            }
-            def key = trimmed.substring(0, eq).trim()
-            def val = trimmed.substring(eq + 1).trim()
-            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-                val = val.substring(1, val.length() - 1)
-            }
-            environment key, val
-        }
-    }
 }

@@ -1,8 +1,11 @@
 package interview.modules.knowledgebase;
 
+import interview.common.annotation.QuotaCheck;
 import interview.common.annotation.RateLimit;
+import interview.common.config.SecurityContextHelper;
 import interview.common.result.Result;
 import interview.modules.knowledgebase.model.KnowledgeBaseListItemDTO;
+import interview.modules.knowledgebase.repository.KnowledgeBaseRepository;
 import interview.modules.knowledgebase.model.KnowledgeBaseStatsDTO;
 import interview.modules.knowledgebase.model.QueryRequest;
 import interview.modules.knowledgebase.model.QueryResponse;
@@ -11,6 +14,8 @@ import interview.modules.knowledgebase.service.KnowledgeBaseDeleteService;
 import interview.modules.knowledgebase.service.KnowledgeBaseListService;
 import interview.modules.knowledgebase.service.KnowledgeBaseQueryService;
 import interview.modules.knowledgebase.service.KnowledgeBaseUploadService;
+import interview.modules.user.model.User;
+import interview.modules.user.service.QuotaService;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -47,9 +52,12 @@ public class KnowledgeBaseController {
     private final KnowledgeBaseQueryService queryService;
     private final KnowledgeBaseListService listService;
     private final KnowledgeBaseDeleteService deleteService;
+    private final SecurityContextHelper securityContextHelper;
+    private final QuotaService quotaService;
+    private final KnowledgeBaseRepository knowledgeBaseRepository;
 
     /**
-     * 获取所有知识库列表
+     * 获取当前用户的知识库列表
      */
     @GetMapping("/api/knowledgebase/list")
     public Result<List<KnowledgeBaseListItemDTO>> getAllKnowledgeBases(
@@ -65,7 +73,8 @@ public class KnowledgeBaseController {
             }
         }
         
-        return Result.success(listService.listKnowledgeBases(status, sortBy));
+        Long userId = securityContextHelper.getCurrentUserId();
+        return Result.success(listService.listKnowledgeBases(userId, status, sortBy));
     }
 
     /**
@@ -73,7 +82,8 @@ public class KnowledgeBaseController {
      */
     @GetMapping("/api/knowledgebase/{id}")
     public Result<KnowledgeBaseListItemDTO> getKnowledgeBase(@PathVariable Long id) {
-        return listService.getKnowledgeBase(id)
+        Long userId = securityContextHelper.getCurrentUserId();
+        return listService.getKnowledgeBase(id, userId)
                 .map(Result::success)
                 .orElse(Result.error("知识库不存在"));
     }
@@ -83,7 +93,8 @@ public class KnowledgeBaseController {
      */
     @DeleteMapping("/api/knowledgebase/{id}")
     public Result<Void> deleteKnowledgeBase(@PathVariable Long id) {
-        deleteService.deleteKnowledgeBase(id);
+        Long userId = securityContextHelper.getCurrentUserId();
+        deleteService.deleteKnowledgeBase(id, userId);
         return Result.success(null);
     }
 
@@ -156,7 +167,11 @@ public class KnowledgeBaseController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "category", required = false) String category) {
-        return Result.success(uploadService.uploadKnowledgeBase(file, name, category));
+        User currentUser = securityContextHelper.getCurrentUser();
+        Long userId = currentUser.getId();
+        quotaService.checkTotalQuota(currentUser, "KB_FILE_TOTAL",
+                (int) knowledgeBaseRepository.countByUserId(userId));
+        return Result.success(uploadService.uploadKnowledgeBase(file, name, category, userId));
     }
 
     /**

@@ -1,12 +1,17 @@
 package interview.modules.resume;
 
+import interview.common.annotation.QuotaCheck;
 import interview.common.annotation.RateLimit;
+import interview.common.config.SecurityContextHelper;
 import interview.common.result.Result;
 import interview.modules.resume.model.ResumeDetailDTO;
 import interview.modules.resume.model.ResumeListItemDTO;
+import interview.modules.resume.repository.ResumeRepository;
 import interview.modules.resume.service.ResumeDeleteService;
 import interview.modules.resume.service.ResumeHistoryService;
 import interview.modules.resume.service.ResumeUploadService;
+import interview.modules.user.model.User;
+import interview.modules.user.service.QuotaService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +44,9 @@ public class ResumeController {
     private final ResumeUploadService uploadService;
     private final ResumeDeleteService deleteService;
     private final ResumeHistoryService historyService;
+    private final SecurityContextHelper securityContextHelper;
+    private final QuotaService quotaService;
+    private final ResumeRepository resumeRepository;
 
     /**
      * 上传简历并获取分析结果
@@ -49,8 +57,13 @@ public class ResumeController {
     @PostMapping(value = "/api/resumes/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
     @RateLimit(dimension = RateLimit.Dimension.IP, count = 5)
+    @QuotaCheck(resource = "RESUME_UPLOAD", quotaType = QuotaCheck.QuotaType.COUNT_PER_DAY)
     public Result<Map<String, Object>> uploadAndAnalyze(@RequestParam("file") MultipartFile file) {
-        Map<String, Object> result = uploadService.uploadAndAnalyze(file);
+        User currentUser = securityContextHelper.getCurrentUser();
+        Long userId = currentUser.getId();
+        quotaService.checkTotalQuota(currentUser, "RESUME_TOTAL",
+                (int) resumeRepository.countByUserId(userId));
+        Map<String, Object> result = uploadService.uploadAndAnalyze(file, userId);
         boolean isDuplicate = (Boolean) result.get("duplicate");
         if (isDuplicate) {
             return Result.success("检测到相同简历，已返回历史分析结果", result);
@@ -59,11 +72,12 @@ public class ResumeController {
     }
 
     /**
-     * 获取所有简历列表
+     * 获取当前用户的简历列表
      */
     @GetMapping("/api/resumes")
     public Result<List<ResumeListItemDTO>> getAllResumes() {
-        List<ResumeListItemDTO> resumes = historyService.getAllResumes();
+        Long userId = securityContextHelper.getCurrentUserId();
+        List<ResumeListItemDTO> resumes = historyService.getResumesByUserId(userId);
         return Result.success(resumes);
     }
 
@@ -72,7 +86,8 @@ public class ResumeController {
      */
     @GetMapping("/api/resumes/{id}/detail")
     public Result<ResumeDetailDTO> getResumeDetail(@PathVariable Long id) {
-        ResumeDetailDTO detail = historyService.getResumeDetail(id);
+        Long userId = securityContextHelper.getCurrentUserId();
+        ResumeDetailDTO detail = historyService.getResumeDetail(id, userId);
         return Result.success(detail);
     }
 
@@ -82,7 +97,8 @@ public class ResumeController {
     @GetMapping("/api/resumes/{id}/export")
     public ResponseEntity<byte[]> exportAnalysisPdf(@PathVariable Long id) {
         try {
-            var result = historyService.exportAnalysisPdf(id);
+            Long userId = securityContextHelper.getCurrentUserId();
+            var result = historyService.exportAnalysisPdf(id, userId);
             String filename = URLEncoder.encode(result.filename(), StandardCharsets.UTF_8);
 
             return ResponseEntity.ok()
@@ -103,7 +119,8 @@ public class ResumeController {
      */
     @DeleteMapping("/api/resumes/{id}")
     public Result<Void> deleteResume(@PathVariable Long id) {
-        deleteService.deleteResume(id);
+        Long userId = securityContextHelper.getCurrentUserId();
+        deleteService.deleteResume(id, userId);
         return Result.success(null);
     }
 
@@ -118,7 +135,8 @@ public class ResumeController {
     @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 2)
     @RateLimit(dimension = RateLimit.Dimension.IP, count = 2)
     public Result<Void> reanalyze(@PathVariable Long id) {
-        uploadService.reanalyze(id);
+        Long userId = securityContextHelper.getCurrentUserId();
+        uploadService.reanalyze(id, userId);
         return Result.success(null);
     }
 

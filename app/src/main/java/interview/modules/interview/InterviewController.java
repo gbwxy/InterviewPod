@@ -1,6 +1,8 @@
 package interview.modules.interview;
 
+import interview.common.annotation.QuotaCheck;
 import interview.common.annotation.RateLimit;
+import interview.common.config.SecurityContextHelper;
 import interview.common.result.Result;
 import interview.modules.interview.model.CreateInterviewRequest;
 import interview.modules.interview.model.InterviewDetailDTO;
@@ -44,13 +46,15 @@ public class InterviewController {
     private final InterviewSessionService sessionService;
     private final InterviewHistoryService historyService;
     private final InterviewPersistenceService persistenceService;
+    private final SecurityContextHelper securityContextHelper;
     
     /**
-     * 列出所有面试会话（用于面试记录页）
+     * 列出当前用户的所有面试会话（用于面试记录页）
      */
     @GetMapping("/api/interview/sessions")
     public Result<List<SessionListItemDTO>> listSessions() {
-        List<SessionListItemDTO> items = persistenceService.findAll().stream()
+        Long userId = securityContextHelper.getCurrentUserId();
+        List<SessionListItemDTO> items = persistenceService.findByUserId(userId).stream()
             .map(SessionListItemDTO::from)
             .toList();
         return Result.success(items);
@@ -62,9 +66,11 @@ public class InterviewController {
     @PostMapping("/api/interview/sessions")
     @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
     @RateLimit(dimension = RateLimit.Dimension.IP, count = 5)
+    @QuotaCheck(resource = "TEXT_INTERVIEW", quotaType = QuotaCheck.QuotaType.COUNT_PER_DAY)
     public Result<InterviewSessionDTO> createSession(@RequestBody CreateInterviewRequest request) {
-        log.info("创建面试会话，题目数量: {}", request.questionCount());
-        InterviewSessionDTO session = sessionService.createSession(request);
+        Long userId = securityContextHelper.getCurrentUserId();
+        log.info("创建面试会话，题目数量: {}, userId={}", request.questionCount(), userId);
+        InterviewSessionDTO session = sessionService.createSession(request, userId);
         return Result.success(session);
     }
     

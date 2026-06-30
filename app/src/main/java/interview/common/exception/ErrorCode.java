@@ -80,7 +80,25 @@ public enum ErrorCode {
     MODULE_NOT_FOUND(11008, "模块不存在"),
     VOICE_CONFIG_READ_FAILED(11009, "读取语音服务配置失败"),
     VOICE_CONFIG_WRITE_FAILED(11010, "写入语音服务配置失败"),
-    VOICE_CONFIG_TEST_FAILED(11011, "语音服务连通性测试失败");
+    VOICE_CONFIG_TEST_FAILED(11011, "语音服务连通性测试失败"),
+
+    // ========== 用户管理模块错误 12xxx ==========
+    USER_NOT_FOUND(12001, "用户不存在"),
+    USER_ALREADY_EXISTS(12002, "用户已存在"),
+    USER_PHONE_EXISTS(12003, "该手机号已注册"),
+    USER_USERNAME_EXISTS(12004, "该用户名已被占用"),
+    USER_NO_PASSWORD(12005, "该账号未设置密码，请使用验证码登录"),
+    USER_PASSWORD_WRONG(12006, "手机号或密码错误"),
+    USER_USERNAME_PASSWORD_WRONG(12007, "用户名或密码错误"),
+    SMS_CODE_INVALID(12008, "验证码错误或已过期"),
+    SMS_CODE_EXPIRED(12009, "验证码已过期，请重新获取"),
+    SMS_CODE_LOCKED(12010, "验证码已失效，请重新获取"),
+    TOKEN_INVALID(12011, "Token 无效或已过期"),
+    QUOTA_EXCEEDED(12012, "今日次数已达上限"),
+    FEATURE_FORBIDDEN(12013, "当前会员等级不支持该功能，请升级会员"),
+    PAYMENT_ORDER_NOT_FOUND(12014, "订单不存在"),
+    PAYMENT_ORDER_ACCESS_DENIED(12015, "无权查看该订单"),
+    PAYMENT_SIGN_FAILED(12016, "支付验签失败");
 
     private final Integer code;
     private final String message;

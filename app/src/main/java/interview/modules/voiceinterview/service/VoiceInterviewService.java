@@ -1,6 +1,7 @@
 package interview.modules.voiceinterview.service;
 
 import interview.common.ai.LlmProviderRegistry;
+import interview.common.config.SecurityContextHelper;
 import interview.common.constant.CommonConstants.InterviewDefaults;
 import interview.common.exception.BusinessException;
 import interview.common.exception.ErrorCode;
@@ -54,10 +55,10 @@ public class VoiceInterviewService {
     private final VoiceInterviewProperties properties;
     private final VoiceEvaluateStreamProducer voiceEvaluateStreamProducer;
     private final LlmProviderRegistry llmProviderRegistry;
+    private final SecurityContextHelper securityContextHelper;
 
     private static final String SESSION_CACHE_KEY_PREFIX = "voice:interview:session:";
     private static final int CACHE_TTL_HOURS = 1;
-    private static final String DEFAULT_USER_ID = "default";
 
     /**
      * Create a new voice interview session
@@ -73,8 +74,9 @@ public class VoiceInterviewService {
             ? request.getLlmProvider()
             : null;
 
+        Long userId = securityContextHelper.getCurrentUserId();
         VoiceInterviewSessionEntity session = VoiceInterviewSessionEntity.builder()
-                .userId(DEFAULT_USER_ID)
+                .userId(userId)
                 .roleType(effectiveSkillId)
                 .skillId(effectiveSkillId)
                 .difficulty(request.getDifficulty() != null ? request.getDifficulty() : InterviewDefaults.DIFFICULTY)
@@ -385,8 +387,8 @@ public class VoiceInterviewService {
      * @param status Filter by status (optional)
      * @return List of session metadata
      */
-    public List<SessionMetaDTO> getAllSessions(String userId, String status) {
-        userId = userId != null ? userId : DEFAULT_USER_ID;
+    public List<SessionMetaDTO> getAllSessions(String status) {
+        Long userId = securityContextHelper.getCurrentUserId();
 
         List<VoiceInterviewSessionEntity> sessions;
         if (status != null && !status.isEmpty()) {
@@ -606,13 +608,28 @@ public class VoiceInterviewService {
      */
     @Transactional
     public void deleteSession(Long sessionId) {
+        Long userId = securityContextHelper.getCurrentUserId();
+        // 校验归属（管理员调用时不经过此方法）
+        sessionRepository.findByIdAndUserId(sessionId, userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.VOICE_SESSION_NOT_FOUND, "会话不存在: " + sessionId));
+        evaluationRepository.findBySessionId(sessionId).ifPresent(evaluationRepository::delete);
+        messageRepository.deleteBySessionId(sessionId);
+        sessionRepository.deleteById(sessionId);
+        log.info("Deleted voice interview session: {}", sessionId);
+    }
+
+    /**
+     * 管理员删除语音面试会话（不做归属校验）
+     */
+    @Transactional
+    public void deleteSessionAdmin(Long sessionId) {
         if (!sessionRepository.existsById(sessionId)) {
             throw new BusinessException(ErrorCode.VOICE_SESSION_NOT_FOUND, "会话不存在: " + sessionId);
         }
         evaluationRepository.findBySessionId(sessionId).ifPresent(evaluationRepository::delete);
         messageRepository.deleteBySessionId(sessionId);
         sessionRepository.deleteById(sessionId);
-        log.info("Deleted voice interview session: {}", sessionId);
+        log.info("管理员删除语音面试会话: {}", sessionId);
     }
 
     /**

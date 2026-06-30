@@ -1,5 +1,6 @@
 package interview.modules.voiceinterview.controller;
 
+import interview.common.annotation.QuotaCheck;
 import interview.common.exception.BusinessException;
 import interview.common.exception.ErrorCode;
 import interview.common.model.AsyncTaskStatus;
@@ -52,8 +53,10 @@ public class VoiceInterviewController {
 
     /**
      * Create a new voice interview session
+     * LITE 用户禁止访问（功能禁止），PRO/MAX_PLUS 用户受每日配额限制
      */
     @PostMapping("/sessions")
+    @QuotaCheck(resource = "VOICE_INTERVIEW", quotaType = QuotaCheck.QuotaType.COUNT_PER_DAY)
     public Result<SessionResponseDTO> createSession(@Valid @RequestBody CreateSessionRequest request) {
         log.info("Creating voice interview session for role: {}", request.getRoleType());
         SessionResponseDTO session = voiceInterviewService.createSession(request);
@@ -111,15 +114,14 @@ public class VoiceInterviewController {
     }
 
     /**
-     * Get all sessions for user
+     * Get all sessions for current user
      */
     @GetMapping("/sessions")
     public Result<List<SessionMetaDTO>> getAllSessions(
-        @RequestParam(required = false) String userId,
         @RequestParam(required = false) String status
     ) {
-        log.info("Getting sessions for user: {}, status: {}", userId, status);
-        List<SessionMetaDTO> sessions = voiceInterviewService.getAllSessions(userId, status);
+        log.info("Getting sessions, status filter: {}", status);
+        List<SessionMetaDTO> sessions = voiceInterviewService.getAllSessions(status);
         return Result.success(sessions);
     }
 

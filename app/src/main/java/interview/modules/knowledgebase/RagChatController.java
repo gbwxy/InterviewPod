@@ -1,5 +1,6 @@
 package interview.modules.knowledgebase;
 
+import interview.common.annotation.QuotaCheck;
 import interview.common.result.Result;
 import interview.modules.knowledgebase.model.RagChatDTO.CreateSessionRequest;
 import interview.modules.knowledgebase.model.RagChatDTO.SendMessageRequest;
@@ -113,6 +114,7 @@ public class RagChatController {
      */
     @PostMapping(value = "/api/rag-chat/sessions/{sessionId}/messages/stream",
                  produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @QuotaCheck(resource = "QA_ASSISTANT", quotaType = QuotaCheck.QuotaType.COUNT_PER_DAY)
     public Flux<ServerSentEvent<String>> sendMessageStream(
             @PathVariable Long sessionId,
             @Valid @RequestBody SendMessageRequest request) {

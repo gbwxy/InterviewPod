@@ -89,7 +89,7 @@ export default function Interview({
 
       initSession(newSession);
     } catch (err) {
-      setError('创建面试失败，请重试');
+      setError(err instanceof Error ? err.message : '创建面试失败，请重试');
       console.error(err);
     } finally {
       setIsCreating(false);
@@ -110,7 +110,7 @@ export default function Interview({
         setAnswer(currentQ.userAnswer);
       }
     } catch (err) {
-      setError('恢复面试失败，请重试');
+      setError(err instanceof Error ? err.message : '恢复面试失败，请重试');
       console.error(err);
     } finally {
       setIsCreating(false);

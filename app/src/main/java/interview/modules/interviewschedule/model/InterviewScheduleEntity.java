@@ -5,12 +5,18 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "interview_schedule")
+@Table(name = "interview_schedule", indexes = {
+    @Index(name = "idx_interview_schedule_user_id", columnList = "user_id")
+})
 @Data
 public class InterviewScheduleEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    // 所属用户 ID（用户隔离）；允许 NULL 以兼容历史数据
+    @Column(name = "user_id")
+    private Long userId;
 
     @Column(name = "company_name", nullable = false)
     private String companyName;

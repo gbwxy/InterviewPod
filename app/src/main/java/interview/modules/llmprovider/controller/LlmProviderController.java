@@ -2,6 +2,7 @@ package interview.modules.llmprovider.controller;
 
 import interview.common.annotation.RateLimit;
 import interview.common.result.Result;
+import org.springframework.security.access.prepost.PreAuthorize;
 import interview.modules.llmprovider.dto.AsrConfigDTO;
 import interview.modules.llmprovider.dto.AsrConfigRequest;
 import interview.modules.llmprovider.dto.CreateProviderRequest;
@@ -48,6 +49,7 @@ public class LlmProviderController {
 
   @PostMapping
   @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
+  @PreAuthorize("hasRole('ADMIN')")
   public Result<Void> createProvider(@RequestBody @Valid CreateProviderRequest request) {
     configService.createProvider(request);
     return Result.success();
@@ -55,6 +57,7 @@ public class LlmProviderController {
 
   @PutMapping("/{id}")
   @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
+  @PreAuthorize("hasRole('ADMIN')")
   public Result<Void> updateProvider(@PathVariable String id,
       @RequestBody UpdateProviderRequest request) {
     configService.updateProvider(id, request);
@@ -63,6 +66,7 @@ public class LlmProviderController {
 
   @DeleteMapping("/{id}")
   @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
+  @PreAuthorize("hasRole('ADMIN')")
   public Result<Void> deleteProvider(@PathVariable String id) {
     configService.deleteProvider(id);
     return Result.success();
@@ -76,6 +80,7 @@ public class LlmProviderController {
 
   @PostMapping("/reload")
   @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
+  @PreAuthorize("hasRole('ADMIN')")
   public Result<Void> reloadProviders() {
     configService.reloadProviders();
     return Result.success();
@@ -89,6 +94,7 @@ public class LlmProviderController {
 
   @PutMapping("/default-provider")
   @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
+  @PreAuthorize("hasRole('ADMIN')")
   public Result<Void> updateDefaultProvider(@RequestBody DefaultProviderDTO request) {
     configService.updateDefaultProvider(request);
     return Result.success();
@@ -96,6 +102,7 @@ public class LlmProviderController {
 
   @PutMapping("/default-embedding-provider")
   @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
+  @PreAuthorize("hasRole('ADMIN')")
   public Result<Void> updateDefaultEmbeddingProvider(@RequestBody DefaultProviderDTO request) {
     configService.updateDefaultEmbeddingProvider(request);
     return Result.success();
@@ -111,6 +118,7 @@ public class LlmProviderController {
 
   @PutMapping("/voice/asr")
   @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
+  @PreAuthorize("hasRole('ADMIN')")
   public Result<Void> updateAsrConfig(@RequestBody AsrConfigRequest request) {
     configService.updateAsrConfig(request);
     return Result.success();
@@ -124,6 +132,7 @@ public class LlmProviderController {
 
   @PutMapping("/voice/tts")
   @RateLimit(dimension = RateLimit.Dimension.GLOBAL, count = 5)
+  @PreAuthorize("hasRole('ADMIN')")
   public Result<Void> updateTtsConfig(@RequestBody TtsConfigRequest request) {
     configService.updateTtsConfig(request);
     return Result.success();

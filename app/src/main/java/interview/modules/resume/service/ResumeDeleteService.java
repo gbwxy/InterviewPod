@@ -23,16 +23,17 @@ public class ResumeDeleteService {
     private final FileStorageService storageService;
     
     /**
-     * 删除简历
-     * 
-     * @param id 简历ID
-     * @throws interview.common.exception.BusinessException 如果简历不存在
+     * 删除简历（带用户归属校验）
+     *
+     * @param id     简历ID
+     * @param userId 当前用户 ID（归属校验，不属于该用户则 404）
+     * @throws interview.common.exception.BusinessException 如果简历不存在或不属于当前用户
      */
-    public void deleteResume(Long id) {
-        log.info("收到删除简历请求: id={}", id);
+    public void deleteResume(Long id, Long userId) {
+        log.info("收到删除简历请求: id={}, userId={}", id, userId);
         
-        // 获取简历信息（用于删除存储文件）
-        ResumeEntity resume = persistenceService.findById(id)
+        // 获取简历信息（用于删除存储文件），同时校验归属
+        ResumeEntity resume = persistenceService.findByIdAndUserId(id, userId)
             .orElseThrow(() -> new BusinessException(
                 ErrorCode.RESUME_NOT_FOUND));
         

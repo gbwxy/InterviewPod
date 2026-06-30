@@ -1,0 +1,95 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- ===================================================
+-- 预置用户 Seed 脚本
+-- ===================================================
+-- 说明：
+--   此脚本在首次创建数据库时执行（通过 Docker init.sql 机制）。
+--   由于 Hibernate ddl-auto=update 会自动建表，但 Docker init.sql 在表不存在时
+--   也需要安全地插入数据，这里使用 DO BLOCK 延迟执行（等表存在后）。
+--
+--   1. 管理员账号：
+--     - 用户名：wangjun_906
+--     - 密码：Test6530!a（BCrypt cost=12）
+--     - 角色：ADMIN
+--     - 订阅过期时间：永不过期（2099-12-31 23:59:59）
+--
+--   2. 普通会员账号：
+--     - 用户名：user_test
+--     - 密码：testTest001（BCrypt cost=12）
+--     - 角色：LITE
+--     - 订阅过期时间：永不过期（2099-12-31 23:59:59）
+--
+--   3. Pro 会员账号：
+--     - 用户名：user_pro
+--     - 密码：Test6530!a（BCrypt cost=12）
+--     - 角色：PRO
+--     - 订阅过期时间：永不过期（2099-12-31 23:59:59）
+--
+--   4. Max+ 会员账号：
+--     - 用户名：user_max_plus
+--     - 密码：Test6530!a（BCrypt cost=12）
+--     - 角色：MAX_PLUS
+--     - 订阅过期时间：永不过期（2099-12-31 23:59:59）
+--
+--   如需修改密码，请重新生成 BCrypt 哈希并替换下方的 password_hash 值：
+--     python3 -c "import bcrypt; print(bcrypt.hashpw(b'YourPassword', bcrypt.gensalt(rounds=12)).decode())"
+-- ===================================================
+
+-- 使用 DO BLOCK 安全处理：表不存在时静默跳过，避免 init 阶段报错
+-- Hibernate 启动后会自动创建 users 表，管理员初始化可在应用首次启动后手动执行此脚本
+-- 或通过 psql 连接后执行
+
+DO $$
+BEGIN
+    -- 检查 users 表是否存在
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
+        -- 插入管理员账号 wangjun_906（如已存在则跳过）
+        -- 密码: Test6530!a  (BCrypt $2b$12, Spring Security 兼容 $2a$ 与 $2b$ 均可)
+        INSERT INTO users (username, password_hash, role, subscription_expired_at, created_at, updated_at)
+        SELECT 'wangjun_906',
+               '$2a$12$9yXAr4p.lId0iVnUv.Hhk.k9P.sEB3G.s70CL7R3Y8D2iNf6N7R3e',
+               'ADMIN',
+               '2099-12-31 23:59:59',
+               NOW(),
+               NOW()
+        WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'wangjun_906');
+
+        -- 插入普通会员账号 user_test（如已存在则跳过）
+        -- 密码: testTest001  (BCrypt $2b$12, Spring Security 兼容)
+        INSERT INTO users (username, password_hash, role, subscription_expired_at, created_at, updated_at)
+        SELECT 'user_test',
+               '$2b$12$0dbYoMxh72NdTosQe7rFve1tcqRupq.CUnYKBZCv1X86ZgupZ.z9m',
+               'LITE',
+               '2099-12-31 23:59:59',
+               NOW(),
+               NOW()
+        WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'user_test');
+
+        -- 插入 Pro 会员账号 user_pro（如已存在则跳过）
+        -- 密码: Test6530!a  (BCrypt $2b$12, Spring Security 兼容)
+        INSERT INTO users (username, password_hash, role, subscription_expired_at, created_at, updated_at)
+        SELECT 'user_pro',
+               '$2b$12$oXaRoC0Ip9CJJMsdJ5tNxumZQVMKGYsZW7XYcwH86CisKYGdIoJtS',
+               'PRO',
+               '2099-12-31 23:59:59',
+               NOW(),
+               NOW()
+        WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'user_pro');
+
+        -- 插入 Max+ 会员账号 user_max_plus（如已存在则跳过）
+        -- 密码: Test6530!a  (BCrypt $2b$12, Spring Security 兼容)
+        INSERT INTO users (username, password_hash, role, subscription_expired_at, created_at, updated_at)
+        SELECT 'user_max_plus',
+               '$2b$12$X81tMNYR5cnVKSUeFiWg.O8mLCXXuvwVMdXKavggb1vZcsFRmF40u',
+               'MAX_PLUS',
+               '2099-12-31 23:59:59',
+               NOW(),
+               NOW()
+        WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'user_max_plus');
+
+        RAISE NOTICE 'Preset users seed completed.';
+    ELSE
+        RAISE NOTICE 'Table "users" does not exist yet. Run this seed after Hibernate creates the table.';
+    END IF;
+END $$;

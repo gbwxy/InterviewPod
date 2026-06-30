@@ -1,0 +1,96 @@
+# ================================
+# InterviewPod 开发环境 Docker Compose
+# ================================
+# 仅启动基础设施服务（PostgreSQL、Redis、MinIO），供本地 bootRun 开发使用
+#
+# 使用方式：
+#   1. 复制 .env.example 为 .env.dev，填入本地配置
+#   2. 启动：docker compose -f docker-compose-dev.yml --env-file .env.dev up -d
+#   3. 运行后端：./gradlew bootRun
+#   4. 运行前端：cd frontend && npm run dev
+#   5. 停止：docker compose -f docker-compose-dev.yml down
+# ================================
+
+services:
+  # =========================================
+  # 1. PostgreSQL 数据库服务
+  # =========================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: interview-postgres-dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-interviewpod}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # =========================================
+  # 2. Redis 缓存与消息队列服务
+  # =========================================
+  redis:
+    image: redis:7
+    container_name: interview-redis-dev
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # =========================================
+  # 3. MinIO 对象存储服务
+  # =========================================
+  minio:
+    image: minio/minio
+    container_name: interview-minio-dev
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${APP_STORAGE_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${APP_STORAGE_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_dev_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # =========================================
+  # 4. MinIO 初始化任务
+  # =========================================
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      set -eu;
+      /usr/bin/mc alias set myminio http://minio:9000 ${APP_STORAGE_ACCESS_KEY:-minioadmin} ${APP_STORAGE_SECRET_KEY:-minioadmin} &&
+      (
+        /usr/bin/mc ls myminio/${APP_STORAGE_BUCKET:-interviewpod} > /dev/null 2>&1 ||
+        /usr/bin/mc mb myminio/${APP_STORAGE_BUCKET:-interviewpod}
+      ) &&
+      /usr/bin/mc anonymous set public myminio/${APP_STORAGE_BUCKET:-interviewpod} &&
+      /usr/bin/mc ls myminio/${APP_STORAGE_BUCKET:-interviewpod}
+      "
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  minio_dev_data:

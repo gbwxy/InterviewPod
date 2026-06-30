@@ -67,6 +67,15 @@ public class ResumePersistenceService {
     @Transactional(rollbackFor = Exception.class)
     public ResumeEntity saveResume(MultipartFile file, String resumeText,
                                    String storageKey, String storageUrl) {
+        return saveResume(file, resumeText, storageKey, storageUrl, null);
+    }
+
+    /**
+     * 保存新简历（含用户绑定）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ResumeEntity saveResume(MultipartFile file, String resumeText,
+                                   String storageKey, String storageUrl, Long userId) {
         try {
             String fileHash = fileHashService.calculateHash(file);
             
@@ -78,9 +87,10 @@ public class ResumePersistenceService {
             resume.setStorageKey(storageKey);
             resume.setStorageUrl(storageUrl);
             resume.setResumeText(resumeText);
+            resume.setUserId(userId);
             
             ResumeEntity saved = resumeRepository.save(resume);
-            log.info("简历已保存: id={}, hash={}", saved.getId(), fileHash);
+            log.info("简历已保存: id={}, hash={}, userId={}", saved.getId(), fileHash, userId);
             
             return saved;
         } catch (Exception e) {
@@ -129,10 +139,31 @@ public class ResumePersistenceService {
     }
     
     /**
-     * 获取所有简历列表
+     * 获取所有简历列表（管理员用）
      */
     public List<ResumeEntity> findAllResumes() {
         return resumeRepository.findAll();
+    }
+
+    /**
+     * 获取指定用户的简历列表（按上传时间倒序）
+     */
+    public List<ResumeEntity> findResumesByUserId(Long userId) {
+        return resumeRepository.findByUserIdOrderByUploadedAtDesc(userId);
+    }
+
+    /**
+     * 根据 ID 和 userId 查找简历（归属校验），不属于该用户返回 empty
+     */
+    public Optional<ResumeEntity> findByIdAndUserId(Long id, Long userId) {
+        return resumeRepository.findByIdAndUserId(id, userId);
+    }
+
+    /**
+     * 统计用户的简历总数
+     */
+    public long countByUserId(Long userId) {
+        return resumeRepository.countByUserId(userId);
     }
     
     /**
